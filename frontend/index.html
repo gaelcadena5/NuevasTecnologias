@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Usuarios - Nuevas Tecnologías</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons (FontAwesome) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- CSS Estilos -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Encabezado / Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Ordinario</h1>
+                    <span>Nuevas Tecnologías</span>
+                </div>
+            </div>
+            
+            <!-- Estado de la Arquitectura (Monitoreo) -->
+            <div class="system-status">
+                <div class="status-badge" id="status-backend">
+                    <span class="status-dot warning"></span>
+                    <span class="status-label">Backend: <strong class="status-value">Verificando...</strong></span>
+                </div>
+                <div class="status-badge" id="status-database">
+                    <span class="status-dot warning"></span>
+                    <span class="status-label">Base de Datos: <strong class="status-value">Verificando...</strong></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Contenedor Principal -->
+        <main class="app-main">
+            <!-- Barra de Controles -->
+            <section class="control-panel">
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Buscar usuarios por nombre o correo..." disabled>
+                </div>
+                <div class="view-actions">
+                    <button class="btn btn-secondary active" id="btn-view-table" title="Vista de Tabla" disabled>
+                        <i class="fa-solid fa-list"></i> Tabla
+                    </button>
+                    <button class="btn btn-secondary" id="btn-view-grid" title="Vista de Tarjetas" disabled>
+                        <i class="fa-solid fa-grip"></i> Tarjetas
+                    </button>
+                    <button class="btn btn-primary" id="btn-refresh" title="Actualizar datos">
+                        <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Actualizar
+                    </button>
+                </div>
+            </section>
+
+            <!-- Sección de Contenido Dinámico -->
+            <section class="content-section">
+                
+                <!-- Estado: Cargando -->
+                <div class="loading-state" id="loading-state">
+                    <div class="spinner-container">
+                        <div class="spinner"></div>
+                    </div>
+                    <h3>Cargando información de usuarios...</h3>
+                    <p>Conectando con la API y consultando la base de datos PostgreSQL.</p>
+                </div>
+
+                <!-- Estado: Error -->
+                <div class="error-state hidden" id="error-state">
+                    <div class="error-icon">
+                        <i class="fa-solid fa-circle-exclamation animate-bounce"></i>
+                    </div>
+                    <h3 id="error-title">Error de Conexión</h3>
+                    <p id="error-message">No se pudo establecer comunicación con el servidor backend. Asegúrate de que esté corriendo en el puerto configurado y que la base de datos esté activa.</p>
+                    <button class="btn btn-primary btn-retry" id="btn-retry">
+                        <i class="fa-solid fa-arrows-rotate"></i> Reintentar Conexión
+                    </button>
+                </div>
+
+                <!-- Estado: Sin Resultados -->
+                <div class="empty-state hidden" id="empty-state">
+                    <div class="empty-icon">
+                        <i class="fa-solid fa-users-slash"></i>
+                    </div>
+                    <h3>No se encontraron usuarios</h3>
+                    <p id="empty-message">La tabla de la base de datos está vacía o no hay coincidencias con tu búsqueda.</p>
+                </div>
+
+                <!-- Visualización 1: Tabla -->
+                <div class="table-container hidden" id="table-view">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre Completo</th>
+                                <th>Correo Electrónico</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Los datos se insertarán dinámicamente aquí -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Visualización 2: Tarjetas Grid -->
+                <div class="grid-container hidden" id="grid-view">
+                    <!-- Las tarjetas se insertarán dinámicamente aquí -->
+                </div>
+
+            </section>
+        </main>
+
+        <!-- Pie de Página / Footer -->
+        <footer class="app-footer">
+            <div class="footer-info">
+                <p><strong>Arquitectura de 3 Capas:</strong> Frontend (HTML5/CSS/JS) ➜ Backend (Express) ➜ Base de Datos (PostgreSQL)</p>
+            </div>
+            <div class="footer-meta">
+                <span class="badge">Ordinario - Nuevas Tecnologías</span>
+                <span class="badge border">&copy; 2026</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Script de la Aplicación -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>

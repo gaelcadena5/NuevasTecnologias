@@ -1,0 +1,24 @@
+# Dependencias de Node
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+
+# Archivos de Entorno / Credenciales
+.env
+.env.local
+.env.production
+.env.development
+.env.staging
+
+# Archivos del Sistema / IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
