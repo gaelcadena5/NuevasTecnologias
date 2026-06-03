@@ -12,139 +12,146 @@ Este proyecto escolar implementa una arquitectura limpia y moderna de 3 capas:
 ```text
 /ordOpt
   ├── backend/               # Servidor de API y Conexión a Base de Datos
-  │     ├── .env.example     # Plantilla de variables de entorno
-  │     ├── db.js            # Módulo de conexión a PostgreSQL (Pool)
+  │     ├── Dockerfile       # Instrucciones de compilación del contenedor Docker
+  │     ├── db.js            # Módulo de conexión a PostgreSQL
   │     ├── init-db.js       # Script para crear la tabla y cargar datos semilla
   │     ├── server.js        # Servidor Express y endpoints API
   │     └── package.json     # Dependencias del Backend
   │
-  └── frontend/              # Interfaz de Usuario estática
-        ├── index.html       # Estructura del Panel de Control
-        ├── style.css        # Estilos visuales con Glassmorphism y animaciones
-        ├── config.js        # Configuración de variables (URL de la API)
-        └── app.js           # Controlador y llamadas Fetch a la API
+  ├── frontend/              # Interfaz de Usuario estática
+  │     ├── index.html       # Estructura del Panel de Control
+  │     ├── style.css        # Estilos visuales con Glassmorphism y animaciones
+  │     ├── config.js        # Configuración de variables (URL de la API)
+  │     └── app.js           # Controlador y llamadas Fetch a la API
+  │
+  └── terraform/             # Infraestructura como Código (AWS Cloud)
+        ├── variables.tf     # Variables de entrada y credenciales sensibles
+        ├── main.tf          # Configuración de red (VPC, Subredes, NAT)
+        ├── services.tf      # Servicios de AWS (RDS, S3, CloudFront, ECR, App Runner)
+        └── outputs.tf       # Direcciones de salida (URLs públicas)
 ```
 
 ---
 
-## Requisitos Previos
+## Guía 1: Despliegue en la Nube (AWS con Terraform)
 
-Asegúrate de tener instalado en tu sistema:
-- [Node.js](https://nodejs.org/) (versión 16 o superior recomendada)
-- Un servidor de base de datos **PostgreSQL** activo, ya sea:
-  - **Local:** Instalado directamente en tu computadora.
-  - **En la nube (Recomendado para pruebas rápidas):** Una base de datos gratuita creada en menos de 2 minutos en [Neon.tech](https://neon.tech/) o [Supabase](https://supabase.com/).
+Esta es la opción principal para desplegar todo en producción en AWS utilizando Terraform. 
+
+### Requisitos Previos en tu Computadora
+1. Tener instalado [Terraform](https://developer.hashicorp.com/terraform/downloads).
+2. Tener instalado [AWS CLI](https://aws.amazon.com/cli/) y configurado con tus credenciales (`aws configure`).
+3. Tener instalado y corriendo [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ---
 
-## Guía de Instalación y Configuración
+### Paso A: Levantar el Repositorio ECR de AWS
+Dado que AWS App Runner requiere que la imagen Docker del backend ya esté en ECR para poder inicializarse, realizaremos un despliegue por objetivos de Terraform:
 
-### 1. Configuración de la Base de Datos
+1. Entra a la carpeta de terraform:
+   ```bash
+   cd terraform
+   ```
+2. Inicializa Terraform:
+   ```bash
+   terraform init
+   ```
+3. Crea únicamente el repositorio ECR:
+   ```bash
+   terraform apply -target=aws_ecr_repository.backend
+   ```
+   *Escribe `yes` para confirmar.* Toma nota del link de salida de `ecr_repository_url` (ej: `123456789012.dkr.ecr.us-east-1.amazonaws.com/ordinario-nt-backend`).
 
-#### Opción A: Base de datos local (PostgreSQL)
-1. Abre tu terminal de base de datos (ej. `psql` o PGAdmin) y crea una nueva base de datos vacía:
-   ```sql
-   CREATE DATABASE ordinario_db;
+---
+
+### Paso B: Compilar y Subir la Imagen Docker del Backend a ECR
+
+1. Abre tu terminal e inicia sesión en Docker para AWS ECR (Reemplaza `<TU_ACCOUNT_ID>` con tu ID de cuenta de AWS y usa tu región correspondiente):
+   ```bash
+   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <TU_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+   ```
+2. Entra a la carpeta `backend` en tu terminal:
+   ```bash
+   cd ../backend
+   ```
+3. Compila la imagen Docker del backend:
+   ```bash
+   docker build -t ordinario-nt-backend .
+   ```
+4. Etiqueta la imagen para subirla a tu repositorio de AWS ECR (Reemplaza `<ECR_REPOSITORY_URL>` con la URL obtenida en el Paso A):
+   ```bash
+   docker tag ordinario-nt-backend:latest <ECR_REPOSITORY_URL>:latest
+   ```
+5. Sube la imagen a la nube de AWS:
+   ```bash
+   docker push <ECR_REPOSITORY_URL>:latest
    ```
 
-#### Opción B: Base de datos en la nube (Neon.tech - Rápido)
-1. Ve a [Neon.tech](https://neon.tech/) y regístrate para obtener una base de datos gratuita.
-2. Copia la cadena de conexión (Connection String) que te provee el sitio (inicia con `postgres://...`).
+---
+
+### Paso C: Desplegar el resto de la Infraestructura en AWS
+
+1. Regresa a la carpeta `terraform`:
+   ```bash
+   cd ../terraform
+   ```
+2. Lanza el despliegue completo de la VPC, RDS, S3, CloudFront y App Runner. Terraform te solicitará ingresar la contraseña que deseas asignar al administrador de PostgreSQL:
+   ```bash
+   terraform apply
+   ```
+   *Ingresa tu contraseña cuando lo pida (mínimo 8 caracteres) y confirma escribiendo `yes`.*
+
+Cuando termine el proceso (toma unos 5-8 minutos para crear el RDS y CloudFront), Terraform te mostrará las URLs de salida:
+- `backend_url`: URL pública de tu API del Backend.
+- `frontend_url`: URL pública de tu sitio web (CloudFront).
+- `ecr_repository_url`: URL de tu repositorio ECR.
+- `database_endpoint`: Endpoint privado de tu RDS.
 
 ---
 
-### 2. Configurar el Backend
+### Paso D: Vincular y Cargar el Frontend
 
-1. Entra al directorio `backend`:
+1. Abre el archivo [frontend/config.js](file:///d:/Development/ordOpt/frontend/config.js) y actualiza la URL para apuntar a tu backend en la nube (usa la URL del output `backend_url`):
+   ```javascript
+   const CONFIG = {
+     API_BASE_URL: 'https://xxxxxx.us-east-1.awsapprunner.com/api' // URL de tu App Runner + /api
+   };
+   export default CONFIG;
+   ```
+2. Sube los archivos estáticos de tu frontend al bucket S3 que creó Terraform (Reemplaza `<NOMBRE_DEL_BUCKET>` con el nombre correspondiente creado, lo puedes ver en tu consola de AWS S3 o usar el nombre dinámico generado):
+   ```bash
+   # Desde la raíz del proyecto
+   aws s3 cp ../frontend s3://ordinario-nt-frontend-<SUFIJO_RANDOM>/ --recursive
+   ```
+3. ¡Listo! Abre la URL del output `frontend_url` en tu navegador para ver tu sistema funcionando al 100% en AWS.
+
+---
+
+## Guía 2: Despliegue Local (Para Desarrollo y Pruebas Rápidas)
+
+Si deseas probar el código en tu computadora localmente, sigue los pasos de configuración y ejecución que se detallan a continuación.
+
+### Requisitos Previos Locales
+- Node.js (v16+)
+- PostgreSQL local instalado (o una base gratuita creada en [Neon.tech](https://neon.tech/))
+
+### Pasos de Ejecución Local
+1. **Configurar Variables de Entorno del Backend:**
+   Copia el archivo `.env.example` a `.env` en la carpeta `backend` y añade tus credenciales de PostgreSQL.
+2. **Instalar Dependencias:**
    ```bash
    cd backend
-   ```
-2. Instala las dependencias:
-   ```bash
    npm install
    ```
-3. Crea tu archivo de configuración de variables de entorno duplicando la plantilla:
-   - En Windows (PowerShell):
-     ```powershell
-     Copy-Item .env.example .env
-     ```
-   - En macOS/Linux:
-     ```bash
-     cp .env.example .env
-     ```
-4. Abre el archivo `.env` creado y edita las credenciales:
-
-   *Si usas la Opción A (DB Local):*
-   ```env
-   PORT=5000
-   FRONTEND_URL=http://localhost:3000 # O la URL donde levantarás tu frontend
-
-   DB_HOST=localhost
-   DB_PORT=5432
-   DB_USER=tu_usuario_postgres
-   DB_PASSWORD=tu_contraseña
-   DB_DATABASE=ordinario_db
+3. **Inicializar la base de datos local:**
+   ```bash
+   npm run init-db
    ```
-
-   *Si usas la Opción B (DB en la nube):*
-   Reemplaza todas las variables de DB por una sola llamada `DATABASE_URL`:
-   ```env
-   PORT=5000
-   FRONTEND_URL=http://localhost:3000
-
-   DATABASE_URL=postgres://tu_usuario:tu_password@host-de-neon/neondb
+4. **Levantar el Backend:**
+   ```bash
+   npm run dev
    ```
-
----
-
-### 3. Inicializar la Base de Datos
-
-Para crear automáticamente la tabla `usuarios` e insertar los 3 registros semilla de prueba, ejecuta el script de inicialización desde la carpeta `backend`:
-```bash
-npm run init-db
-```
-Deberías ver un mensaje confirmando que la conexión fue exitosa, la tabla `usuarios` fue creada y los registros fueron insertados.
-
----
-
-### 4. Levantar el Servidor Backend
-
-Inicia el servidor en modo de desarrollo (con autorecarga en caso de cambios en el código):
-```bash
-npm run dev
-```
-El backend estará escuchando en `http://localhost:5000`.
-
----
-
-### 5. Levantar el Frontend
-
-Como el frontend utiliza HTML5, CSS y JS nativo en formato de módulos, para evitar errores de CORS en el navegador se recomienda servir los archivos usando un servidor web estático local en lugar de dar doble clic al archivo HTML.
-
-#### Opción 1: Usando `serve` de npm (Recomendado)
-Desde la raíz del proyecto o desde la carpeta `frontend`, ejecuta:
-```bash
-npx serve -l 3000 frontend
-```
-Esto levantará el frontend en la dirección `http://localhost:3000`.
-
-#### Opción 2: Extensión Live Server de VS Code
-Si utilizas Visual Studio Code:
-1. Instala la extensión **Live Server**.
-2. Abre la carpeta del proyecto en VS Code.
-3. Haz clic derecho sobre `frontend/index.html` y selecciona **Open with Live Server**.
-4. Modifica la variable `FRONTEND_URL` en tu archivo `.env` del backend para que coincida con el puerto asignado por Live Server (generalmente `http://127.0.0.1:5500` o `http://localhost:5500`).
-
----
-
-## Verificación de Funcionamiento
-
-Una vez que ambas capas estén activas:
-1. **Verificación de API:** Abre `http://localhost:5000/api/users` en tu navegador. Deberías ver la respuesta JSON estructurada con la información de los usuarios.
-2. **Health Check:** Abre `http://localhost:5000/api/health` para comprobar el estado interno de la API y su conectividad directa con PostgreSQL.
-3. **Verificación del Frontend:** Abre `http://localhost:3000` (o el puerto correspondiente). Deberías ver:
-   - El panel de control con un diseño premium y animado.
-   - Dos badges indicadores en la barra superior en color verde brillante (`Backend: En línea` y `Base de Datos: Conectado`).
-   - La tabla con los 3 usuarios semilla.
-   - La funcionalidad para alternar la vista entre tabla estructurada y tarjetas (grid).
-   - El buscador interactivo que filtra a los usuarios en tiempo real.
+5. **Servir el Frontend:**
+   ```bash
+   npx serve -l 3000 frontend
+   ```
+6. Abre `http://localhost:3000` en tu navegador.
