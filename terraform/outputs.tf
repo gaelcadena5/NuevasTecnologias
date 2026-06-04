@@ -1,6 +1,6 @@
 output "frontend_url" {
-  description = "URL publica del Frontend served por CloudFront CDN"
-  value       = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}"
+  description = "URL publica del Frontend served por App Runner (Nginx)"
+  value       = "https://${aws_apprunner_service.frontend.service_url}"
 }
 
 output "backend_url" {
@@ -16,4 +16,9 @@ output "database_endpoint" {
 output "ecr_repository_url" {
   description = "URL del repositorio ECR para compilar y subir la imagen Docker del Backend"
   value       = aws_ecr_repository.backend.repository_url
+}
+
+output "ecr_frontend_repository_url" {
+  description = "URL del repositorio ECR para compilar y subir la imagen Docker del Frontend"
+  value       = aws_ecr_repository.frontend.repository_url
 }
