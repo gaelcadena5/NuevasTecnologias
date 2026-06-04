@@ -8,6 +8,8 @@ const { Pool } = pg;
 
 // Configuración flexible que soporta URL de conexión (muy común en nubes como Neon o Supabase)
 // o credenciales individuales tradicionales.
+const useSSL = process.env.DB_HOST && (process.env.DB_HOST.includes('amazonaws.com') || process.env.DB_SSL === 'true');
+
 const config = process.env.DATABASE_URL
   ? {
       connectionString: process.env.DATABASE_URL,
@@ -21,6 +23,7 @@ const config = process.env.DATABASE_URL
       user: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DATABASE,
+      ssl: useSSL ? { rejectUnauthorized: false } : false
     };
 
 const pool = new Pool(config);

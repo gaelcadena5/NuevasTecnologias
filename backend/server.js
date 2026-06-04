@@ -78,10 +78,49 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Recurso no encontrado' });
 });
 
+// Función para inicializar la base de datos de forma automática en el arranque
+async function bootstrapDatabase() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id SERIAL PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      email VARCHAR(100) UNIQUE NOT NULL
+    );
+  `;
+  const checkEmptyQuery = `SELECT COUNT(*) FROM usuarios;`;
+  const insertSeedDataQuery = `
+    INSERT INTO usuarios (nombre, email) VALUES
+    ('Juan Pérez', 'juan.perez@example.com'),
+    ('María Gómez', 'maria.gomez@example.com'),
+    ('Carlos Rodríguez', 'carlos.rodriguez@example.com')
+    ON CONFLICT (email) DO NOTHING;
+  `;
+
+  try {
+    console.log('Verificando inicialización de la base de datos...');
+    await pool.query(createTableQuery);
+    const res = await pool.query(checkEmptyQuery);
+    const count = parseInt(res.rows[0].count, 10);
+    
+    if (count === 0) {
+      console.log('La base de datos está vacía. Insertando datos semilla...');
+      await pool.query(insertSeedDataQuery);
+      console.log('¡Base de datos inicializada y datos semilla insertados!');
+    } else {
+      console.log(`La base de datos ya contiene ${count} registros.`);
+    }
+  } catch (error) {
+    console.error('Error al inicializar la base de datos en el arranque:', error);
+  }
+}
+
 // Iniciar el servidor
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`==================================================`);
   console.log(` Servidor Backend escuchando en: http://localhost:${PORT}`);
   console.log(` Configurado para permitir CORS desde: ${frontendUrl}`);
   console.log(`==================================================`);
+  
+  // Ejecutar inicialización de base de datos
+  await bootstrapDatabase();
 });
